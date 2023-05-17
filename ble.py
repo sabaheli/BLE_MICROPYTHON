@@ -1,36 +1,37 @@
 import ubluetooth
 from functions import LEDController
 
+
 class ESP32_BLE():
-    def __init__(self, name):
+    def __init__(self, name, connection_F):
         self.name = name
+        self.connection_F = connection_F
         self.ble = ubluetooth.BLE()
+        self.ble.config(gap_name="TESTING")
+        self.ble.config('gap_name')
         self.ble.active(True)
-        self.disconnected()
+        #self.disconnected()
         self.ble.irq(self.ble_irq)
         self.register()
         self.advertiser()
-        self.led_controller = LEDController()
+        self.led_controller = LEDController(self)
 
-    def connected(self):
-        global Conecction_F
-        Conecction_F = True
-        self.led_controller.led.value(1)
-
-    def disconnected(self):
-        global Conecction_F
-        Conecction_F = False
+    def set_connection_status(self, status):
+        self.connection_F = status
 
     def ble_irq(self, event, data):
         global ble_msg
         
         if event == 1: #_IRQ_CENTRAL_CONNECT:
                        # A central has connected to this peripheral
+            
+            self.set_connection_status(True)
             self.connected()
 
         elif event == 2: #_IRQ_CENTRAL_DISCONNECT:
                          # A central has disconnected from this peripheral.
             self.advertiser()
+            self.set_connection_status(False)
             self.disconnected()
         
         elif event == 3: #_IRQ_GATTS_WRITE:
@@ -39,6 +40,7 @@ class ESP32_BLE():
             ble_msg = buffer.decode('UTF-8').strip()
             print(ble_msg)
 
+            
     def register(self):        
         # Nordic UART Service (NUS)
         NUS_UUID = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E'
@@ -58,7 +60,8 @@ class ESP32_BLE():
 
     def advertiser(self):
         name = bytes(self.name, 'UTF-8')
-        adv_data = bytearray(b'0x02\x01\x06') + bytearray((len(name) + 1, 0x09)) + name
+        adv_data = bytearray('bx02\x01\x06') + bytearray((len(name) + 1, 0x09)) + name
         self.ble.gap_advertise(100, adv_data)
         print(adv_data)
         print("rn")
+
