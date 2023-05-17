@@ -50,7 +50,25 @@ class LEDController:
             pass
         self.led_F = 0
         self.counter_led = 0
-        self.ble_instance.set_connection_status(False)  # Set the initial connection status to True
+        #self.ble_instance.set_connection_status(False)  # Set the initial connection status to True
+    
+    def serial_interrupt(self, uart):
+        while uart.any():
+            data = uart.read(1)
+            if data == b'\n':
+                if self.serial_buffer == b"special_keyword":
+                    print("Special keyword detected!")
+                self.serial_buffer = b""
+            else:
+                self.serial_buffer += data
+
+    def read_serial(self):
+        if self.serial.any():
+            data = self.serial.read()
+            return data
+        else:
+            return None
+
 
 
 
