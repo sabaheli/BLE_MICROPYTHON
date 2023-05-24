@@ -1,6 +1,6 @@
 import ubluetooth
 from functions import LEDController
-
+from machine import UART
 
 class ESP32_BLE():
     def __init__(self, name, connection_F):
@@ -12,17 +12,22 @@ class ESP32_BLE():
         self.ble.active(False)
         self.ble.active(True)
         
+        
         #self.disconnected()
         self.ble.irq(self.ble_irq)
         self.register()
         self.advertiser()
         self.led_controller = LEDController(self)
-        self.rx_buffer = b""
+        self.serial = UART(1, 9600,rx = 16,tx = 17)
+        self.serial_buffer = b""
+        
 
     def set_connection_status(self, status):
         self.connection_F = status
+        print("connected")
 
     def ble_irq(self, event, data):
+        #self.print_serial_data()
         if event == 1: #_IRQ_CENTRAL_CONNECT:
                        # A central has connected to this peripheral
             self.set_connection_status(True)
@@ -32,23 +37,13 @@ class ESP32_BLE():
                          # A central has disconnected from this peripheral.
             self.advertiser()
             self.set_connection_status(False)
-            self.disconnected()
-        
+            #self.disconnected()
+            print("disconnect")
         elif event == 3: #_IRQ_GATTS_WRITE:
                          # A client has written to this characteristic or descriptor.          
             value = self.ble.gatts_read(self.rx)
-            self.rx_buffer += value
-            if b"\n" in self.rx_buffer:
-                lines = self.rx_buffer.split(b"\n")
-                self.rx_buffer = lines[-1]
-                for line in lines[:-1]:
-                    line = line.strip().decode()
-                    if line == "on":
-                        print("yeeeesss")
-                        print(line[0])
-                    if line == "off":
-                        print("nooooo")
-                        print(line)
+            ble_msg = self.serial_buffer.decode('UTF-8').strip()
+            print(ble_msg)
 
     def register(self):        
         # Nordic UART Service (NUS)
@@ -69,9 +64,25 @@ class ESP32_BLE():
 
     def advertiser(self):
         name = bytes(self.name, 'UTF-8')
-        adv_data = bytearray(b'x02\x01\x06') + bytearray((len(name) + 1, 0x09)) + name
-        self.ble.gap_advertise(100, adv_data)
+        adv_data = self.ble.gap_advertise(100, bytearray('\x02\x01\x02','UTF_8') + bytearray((len(name) + 1, 0x09),'UTF_8') + name,connectable = True)
         print(adv_data)
-        print("rn")
+        print("Advertisement started")
+
+        
+# 
+#     def print_serial_data(self):
+#          while True:
+#             data = self.serial.read()
+#             if data :
+#                 if data == b'on':
+#                    self.serial.write(data)
+#                    print("onn")
+#                 if data == b'off':
+#                     self.serial.write('led is off')
+#                     print("OOFF")
+#                 else :
+#                     self.serial.write('invalid data')
+#             
+
 
 
